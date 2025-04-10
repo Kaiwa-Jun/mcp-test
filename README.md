@@ -35,6 +35,10 @@ Vercelへのデプロイには以下のGitHub Secretsが必要です：
 - `VERCEL_PROJECT_ID`: VercelプロジェクトID
 - `VERCEL_ORG_ID`: Vercel組織ID
 
+### CI/CD動作確認済み
+
+CI/CDパイプラインは正常に動作しています！
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
