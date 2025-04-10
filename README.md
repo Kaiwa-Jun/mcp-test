@@ -20,6 +20,21 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## CI/CD
+
+このプロジェクトでは以下のCI/CDパイプラインを実装しています：
+
+- **CI（継続的インテグレーション）**: プルリクエストとmainブランチへのプッシュ時に自動的にテストとリントチェックが実行されます
+- **CD（継続的デリバリー）**: mainブランチへのマージ時に自動的にVercelへデプロイされます
+
+### 必要な環境変数
+
+Vercelへのデプロイには以下のGitHub Secretsが必要です：
+
+- `VERCEL_TOKEN`: Vercel APIトークン
+- `VERCEL_PROJECT_ID`: VercelプロジェクトID
+- `VERCEL_ORG_ID`: Vercel組織ID
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
