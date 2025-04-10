@@ -80,6 +80,7 @@ export function Todo({ todo, onToggle, onDelete, onEdit }: TodoProps) {
               size="icon" 
               onClick={handleEditSave}
               className="h-8 w-8 bg-green-500 hover:bg-green-600 text-white"
+              aria-label="check"
             >
               <Check className="h-4 w-4" />
             </Button>
@@ -91,6 +92,7 @@ export function Todo({ todo, onToggle, onDelete, onEdit }: TodoProps) {
                 setIsEditing(false);
               }}
               className="h-8 w-8"
+              aria-label="x"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -132,6 +134,7 @@ export function Todo({ todo, onToggle, onDelete, onEdit }: TodoProps) {
                       size="icon"
                       onClick={handleDelete}
                       className="h-7 w-7"
+                      aria-label="check"
                     >
                       <Check className="h-3 w-3" />
                     </Button>
@@ -140,6 +143,7 @@ export function Todo({ todo, onToggle, onDelete, onEdit }: TodoProps) {
                       size="icon"
                       onClick={() => setShowDeleteConfirm(false)}
                       className="h-7 w-7"
+                      aria-label="x"
                     >
                       <X className="h-3 w-3" />
                     </Button>
@@ -152,6 +156,7 @@ export function Todo({ todo, onToggle, onDelete, onEdit }: TodoProps) {
                       onClick={() => setIsEditing(true)}
                       className="h-8 w-8 text-slate-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900"
                       disabled={todo.completed}
+                      aria-label="edit2"
                     >
                       <Edit2 className="h-4 w-4" />
                     </Button>
@@ -160,6 +165,7 @@ export function Todo({ todo, onToggle, onDelete, onEdit }: TodoProps) {
                       size="icon"
                       onClick={handleDelete}
                       className="h-8 w-8 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900"
+                      aria-label="trash2"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

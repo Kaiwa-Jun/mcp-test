@@ -166,7 +166,7 @@ export function TodoList() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center p-8">
+      <div className="flex justify-center p-8" data-testid="loading">
         <div className="animate-pulse flex space-x-2">
           <div className="h-3 w-3 bg-slate-300 rounded-full"></div>
           <div className="h-3 w-3 bg-slate-300 rounded-full"></div>
