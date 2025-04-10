@@ -6,99 +6,10 @@ import { Todo, TodoItem } from './Todo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { getTodos, saveTodos, clearTodos } from '@/lib/todoStorage';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
-
-// Tabsコンポーネントのインラインスタイル
-type TabsProps = {
-  defaultValue: string;
-  className?: string;
-  onValueChange: (value: string) => void;
-  children: React.ReactNode;
-};
-
-const Tabs: React.FC<TabsProps> = ({ defaultValue, className, onValueChange, children }) => {
-  const [value, setValue] = useState(defaultValue);
-
-  const handleValueChange = (newValue: string) => {
-    setValue(newValue);
-    onValueChange(newValue);
-  };
-
-  return (
-    <div className={`tabs ${className || ''}`} data-value={value}>
-      {React.Children.map(children, child => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, {
-            currentValue: value,
-            onValueChange: handleValueChange
-          });
-        }
-        return child;
-      })}
-    </div>
-  );
-};
-
-type TabsListProps = {
-  className?: string;
-  children: React.ReactNode;
-  currentValue?: string;
-  onValueChange?: (value: string) => void;
-};
-
-const TabsList: React.FC<TabsListProps> = ({ className, children }) => {
-  return (
-    <div className={`tabs-list ${className || ''}`}>
-      {children}
-    </div>
-  );
-};
-
-type TabsTriggerProps = {
-  value: string;
-  className?: string;
-  children: React.ReactNode;
-  currentValue?: string;
-  onValueChange?: (value: string) => void;
-};
-
-const TabsTrigger: React.FC<TabsTriggerProps> = ({ value, className, children, currentValue, onValueChange }) => {
-  const isActive = currentValue === value;
-  
-  return (
-    <button
-      className={`tabs-trigger ${isActive ? 'data-[state=active]' : ''} ${className || ''}`}
-      data-state={isActive ? 'active' : 'inactive'}
-      onClick={() => onValueChange && onValueChange(value)}
-    >
-      {children}
-    </button>
-  );
-};
-
-type TabsContentProps = {
-  value: string;
-  className?: string;
-  children: React.ReactNode;
-  currentValue?: string;
-};
-
-const TabsContent: React.FC<TabsContentProps> = ({ value, className, children, currentValue }) => {
-  const isActive = currentValue === value;
-  
-  if (!isActive) return null;
-  
-  return (
-    <div 
-      className={`tabs-content ${className || ''}`}
-      data-state={isActive ? 'active' : 'inactive'}
-    >
-      {children}
-    </div>
-  );
-};
 
 // Alertコンポーネントのインラインスタイル
 type AlertProps = {
@@ -240,6 +151,12 @@ export function TodoList() {
     }
   };
 
+  // タブ変更時のハンドラ
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as 'all' | 'active' | 'completed');
+  };
+
+  // 現在のタブに基づいてフィルタリングされたTODO
   const filteredTodos = todos.filter(todo => {
     if (activeTab === 'all') return true;
     if (activeTab === 'active') return !todo.completed;
@@ -277,7 +194,7 @@ export function TodoList() {
         </div>
       </Card>
 
-      <Tabs defaultValue="all" className="w-full" onValueChange={(value: string) => setActiveTab(value as 'all' | 'active' | 'completed')}>
+      <Tabs defaultValue="all" className="w-full" onValueChange={handleTabChange}>
         <TabsList className="grid grid-cols-3 mb-4">
           <TabsTrigger value="all">すべて</TabsTrigger>
           <TabsTrigger value="active">未完了</TabsTrigger>
