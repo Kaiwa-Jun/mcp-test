@@ -93,6 +93,14 @@ export function TodoList() {
     }
   };
 
+  const editTodo = (id: string, newText: string) => {
+    setTodos(
+      todos.map(todo => 
+        todo.id === id ? { ...todo, text: newText } : todo
+      )
+    );
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       addTodo();
@@ -148,6 +156,7 @@ export function TodoList() {
                 todo={todo}
                 onToggle={toggleTodo}
                 onDelete={deleteTodo}
+                onEdit={editTodo}
               />
             ))}
             
