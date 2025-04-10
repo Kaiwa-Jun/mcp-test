@@ -1,39 +1,96 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Todo, TodoItem } from './Todo';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { getTodos, saveTodos, clearTodos } from '@/lib/todoStorage';
+import { toast } from 'sonner';
 
 export function TodoList() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [newTodo, setNewTodo] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // アプリケーション起動時にローカルストレージからデータを読み込む
+  useEffect(() => {
+    const loadTodos = () => {
+      try {
+        const storedTodos = getTodos();
+        setTodos(storedTodos);
+        if (storedTodos.length > 0) {
+          toast.success(`${storedTodos.length}件のTODOを読み込みました`);
+        }
+      } catch (error) {
+        console.error('TODOデータの読み込みに失敗しました:', error);
+        toast.error('TODOデータの読み込みに失敗しました');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTodos();
+  }, []);
+
+  // TODOが更新されたらローカルストレージに保存する
+  useEffect(() => {
+    if (!isLoading) {
+      saveTodos(todos);
+    }
+  }, [todos, isLoading]);
 
   const addTodo = () => {
     if (newTodo.trim() === '') return;
     
-    const newTodoItem: TodoItem = {
-      id: Date.now().toString(),
-      text: newTodo,
-      completed: false
-    };
-    
-    setTodos([...todos, newTodoItem]);
-    setNewTodo('');
+    try {
+      const newTodoItem: TodoItem = {
+        id: Date.now().toString(),
+        text: newTodo,
+        completed: false
+      };
+      
+      setTodos([...todos, newTodoItem]);
+      setNewTodo('');
+      toast.success('TODOを追加しました');
+    } catch (error) {
+      console.error('TODOの追加に失敗しました:', error);
+      toast.error('TODOの追加に失敗しました');
+    }
   };
 
   const toggleTodo = (id: string) => {
-    setTodos(
-      todos.map(todo => 
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
+    try {
+      setTodos(
+        todos.map(todo => {
+          if (todo.id === id) {
+            const updated = { ...todo, completed: !todo.completed };
+            toast.success(updated.completed 
+              ? `「${todo.text}」を完了しました` 
+              : `「${todo.text}」を未完了に戻しました`);
+            return updated;
+          }
+          return todo;
+        })
+      );
+    } catch (error) {
+      console.error('TODOの状態変更に失敗しました:', error);
+      toast.error('TODOの状態変更に失敗しました');
+    }
   };
 
   const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+    try {
+      const todoToDelete = todos.find(todo => todo.id === id);
+      setTodos(todos.filter(todo => todo.id !== id));
+      if (todoToDelete) {
+        toast.success(`「${todoToDelete.text}」を削除しました`);
+      }
+    } catch (error) {
+      console.error('TODOの削除に失敗しました:', error);
+      toast.error('TODOの削除に失敗しました');
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -41,6 +98,27 @@ export function TodoList() {
       addTodo();
     }
   };
+
+  const handleClearAll = () => {
+    if (window.confirm('すべてのTODOを削除しますか？')) {
+      try {
+        setTodos([]);
+        clearTodos();
+        toast.success('すべてのTODOを削除しました');
+      } catch (error) {
+        console.error('TODOの削除に失敗しました:', error);
+        toast.error('TODOの削除に失敗しました');
+      }
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-md mx-auto flex justify-center p-8">
+        <p>読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto space-y-6">
@@ -72,6 +150,17 @@ export function TodoList() {
                 onDelete={deleteTodo}
               />
             ))}
+            
+            <div className="flex justify-end mt-4">
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleClearAll}
+                className="text-xs"
+              >
+                すべて削除
+              </Button>
+            </div>
           </motion.div>
         ) : (
           <motion.div
