@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TodoItem } from "../TodoItem";
-import { vi } from "vitest";
+import { jest } from "@jest/globals";
 
 describe("TodoItem Component", () => {
   const mockTodo = {
@@ -13,11 +13,11 @@ describe("TodoItem Component", () => {
     updated_at: new Date().toISOString(),
   };
 
-  const mockHandleToggle = vi.fn();
-  const mockHandleDelete = vi.fn();
+  const mockHandleToggle = jest.fn();
+  const mockHandleDelete = jest.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    jest.clearAllMocks();
   });
 
   it("renders todo item correctly", () => {
