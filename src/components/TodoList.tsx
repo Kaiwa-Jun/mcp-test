@@ -1,26 +1,32 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Todo, TodoItem } from './Todo';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getTodos, saveTodos, clearTodos } from '@/lib/todoStorage';
-import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { TodoItem } from "./TodoItem";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { getTodos, saveTodos, clearTodos } from "@/lib/todoStorage";
+import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Database } from "@/types/database.types";
 
 // Alertコンポーネントのインラインスタイル
 type AlertProps = {
-  variant?: 'default' | 'destructive';
+  variant?: "default" | "destructive";
   className?: string;
   children: React.ReactNode;
 };
 
-const Alert: React.FC<AlertProps> = ({ variant = 'default', className, children }) => {
+const Alert: React.FC<AlertProps> = ({
+  variant = "default",
+  className,
+  children,
+}) => {
   return (
-    <div className={`alert alert-${variant} ${className || ''}`}>
+    <div className={`alert alert-${variant} ${className || ""}`}>
       {children}
     </div>
   );
@@ -31,136 +37,132 @@ type AlertDescriptionProps = {
   children: React.ReactNode;
 };
 
-const AlertDescription: React.FC<AlertDescriptionProps> = ({ className, children }) => {
+const AlertDescription: React.FC<AlertDescriptionProps> = ({
+  className,
+  children,
+}) => {
   return (
-    <div className={`alert-description ${className || ''}`}>
-      {children}
-    </div>
+    <div className={`alert-description ${className || ""}`}>{children}</div>
   );
 };
 
+type Todo = Database["public"]["Tables"]["todos"]["Row"];
+
 export function TodoList() {
-  const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [newTodo, setNewTodo] = useState('');
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTodo, setNewTodo] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
+  const [activeTab, setActiveTab] = useState<"all" | "active" | "completed">(
+    "all"
+  );
 
-  // アプリケーション起動時にローカルストレージからデータを読み込む
   useEffect(() => {
-    const loadTodos = () => {
-      try {
-        const storedTodos = getTodos();
-        setTodos(storedTodos);
-        if (storedTodos.length > 0) {
-          toast.success(`${storedTodos.length}件のTODOを読み込みました`);
-        }
-      } catch (error) {
-        console.error('TODOデータの読み込みに失敗しました:', error);
-        toast.error('TODOデータの読み込みに失敗しました');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTodos();
+    fetchTodos();
   }, []);
 
-  // TODOが更新されたらローカルストレージに保存する
-  useEffect(() => {
-    if (!isLoading) {
-      saveTodos(todos);
-    }
-  }, [todos, isLoading]);
+  async function fetchTodos() {
+    const { data, error } = await supabase
+      .from("todos")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  const addTodo = () => {
-    if (newTodo.trim() === '') return;
-    
-    try {
-      const newTodoItem: TodoItem = {
-        id: Date.now().toString(),
-        text: newTodo,
-        completed: false
-      };
-      
-      setTodos([...todos, newTodoItem]);
-      setNewTodo('');
-      toast.success('TODOを追加しました');
-    } catch (error) {
-      console.error('TODOの追加に失敗しました:', error);
-      toast.error('TODOの追加に失敗しました');
+    if (error) {
+      console.error("Error fetching todos:", error);
+      return;
     }
-  };
 
-  const toggleTodo = (id: string) => {
-    try {
-      setTodos(
-        todos.map(todo => {
-          if (todo.id === id) {
-            const updated = { ...todo, completed: !todo.completed };
-            toast.success(updated.completed 
-              ? `「${todo.text}」を完了しました` 
-              : `「${todo.text}」を未完了に戻しました`);
-            return updated;
-          }
-          return todo;
-        })
-      );
-    } catch (error) {
-      console.error('TODOの状態変更に失敗しました:', error);
-      toast.error('TODOの状態変更に失敗しました');
+    setTodos(data || []);
+    if (data && data.length > 0) {
+      toast.success(`${data.length}件のTODOを読み込みました`);
     }
-  };
+    setIsLoading(false);
+  }
 
-  const deleteTodo = (id: string) => {
-    try {
-      const todoToDelete = todos.find(todo => todo.id === id);
-      setTodos(todos.filter(todo => todo.id !== id));
-      if (todoToDelete) {
-        toast.success(`「${todoToDelete.text}」を削除しました`);
-      }
-    } catch (error) {
-      console.error('TODOの削除に失敗しました:', error);
-      toast.error('TODOの削除に失敗しました');
+  async function addTodo(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTodo.trim()) return;
+
+    const { error } = await supabase
+      .from("todos")
+      .insert([{ title: newTodo.trim() }]);
+
+    if (error) {
+      console.error("Error adding todo:", error);
+      toast.error("TODOの追加に失敗しました");
+      return;
     }
-  };
 
-  const editTodo = (id: string, newText: string) => {
-    setTodos(
-      todos.map(todo => 
-        todo.id === id ? { ...todo, text: newText } : todo
-      )
-    );
-  };
+    setNewTodo("");
+    fetchTodos();
+  }
+
+  async function toggleTodo(todo: Todo) {
+    const { error } = await supabase
+      .from("todos")
+      .update({ completed: !todo.completed })
+      .eq("id", todo.id);
+
+    if (error) {
+      console.error("Error toggling todo:", error);
+      toast.error("TODOの状態変更に失敗しました");
+      return;
+    }
+
+    fetchTodos();
+  }
+
+  async function deleteTodo(id: string) {
+    const { error } = await supabase.from("todos").delete().eq("id", id);
+
+    if (error) {
+      console.error("Error deleting todo:", error);
+      toast.error("TODOの削除に失敗しました");
+      return;
+    }
+
+    fetchTodos();
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      addTodo();
+    if (e.key === "Enter") {
+      addTodo(e);
     }
   };
 
-  const handleClearAll = () => {
-    if (window.confirm('すべてのTODOを削除しますか？')) {
+  const handleClearAll = async () => {
+    if (window.confirm("すべてのTODOを削除しますか？")) {
       try {
-        setTodos([]);
-        clearTodos();
-        toast.success('すべてのTODOを削除しました');
+        const { error } = await supabase
+          .from("todos")
+          .delete()
+          .in(
+            "id",
+            todos.map((todo) => todo.id)
+          );
+
+        if (error) {
+          throw error;
+        }
+
+        toast.success("すべてのTODOを削除しました");
+        fetchTodos();
       } catch (error) {
-        console.error('TODOの削除に失敗しました:', error);
-        toast.error('TODOの削除に失敗しました');
+        console.error("TODOの削除に失敗しました:", error);
+        toast.error("TODOの削除に失敗しました");
       }
     }
   };
 
   // タブ変更時のハンドラ
   const handleTabChange = (value: string) => {
-    setActiveTab(value as 'all' | 'active' | 'completed');
+    setActiveTab(value as "all" | "active" | "completed");
   };
 
   // 現在のタブに基づいてフィルタリングされたTODO
-  const filteredTodos = todos.filter(todo => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'active') return !todo.completed;
-    if (activeTab === 'completed') return todo.completed;
+  const filteredTodos = todos.filter((todo) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "active") return !todo.completed;
+    if (activeTab === "completed") return todo.completed;
     return true;
   });
 
@@ -187,14 +189,21 @@ export function TodoList() {
             placeholder="新しいTODOを入力..."
             className="flex-1"
           />
-          <Button onClick={addTodo} className="bg-blue-500 hover:bg-blue-600 text-white">
+          <Button
+            onClick={addTodo}
+            className="bg-blue-500 hover:bg-blue-600 text-white"
+          >
             <Plus className="mr-1 h-4 w-4" />
             追加
           </Button>
         </div>
       </Card>
 
-      <Tabs defaultValue="all" className="w-full" onValueChange={handleTabChange}>
+      <Tabs
+        defaultValue="all"
+        className="w-full"
+        onValueChange={handleTabChange}
+      >
         <TabsList className="grid grid-cols-3 mb-4">
           <TabsTrigger value="all">すべて</TabsTrigger>
           <TabsTrigger value="active">未完了</TabsTrigger>
@@ -202,31 +211,28 @@ export function TodoList() {
         </TabsList>
 
         <TabsContent value="all" className="mt-0">
-          <TodoListContent 
-            todos={filteredTodos} 
-            onToggle={toggleTodo} 
-            onDelete={deleteTodo} 
-            onEdit={editTodo} 
+          <TodoListContent
+            todos={filteredTodos}
+            onToggle={toggleTodo}
+            onDelete={deleteTodo}
             onClearAll={handleClearAll}
           />
         </TabsContent>
-        
+
         <TabsContent value="active" className="mt-0">
-          <TodoListContent 
-            todos={filteredTodos} 
-            onToggle={toggleTodo} 
-            onDelete={deleteTodo} 
-            onEdit={editTodo} 
+          <TodoListContent
+            todos={filteredTodos}
+            onToggle={toggleTodo}
+            onDelete={deleteTodo}
             onClearAll={handleClearAll}
           />
         </TabsContent>
-        
+
         <TabsContent value="completed" className="mt-0">
-          <TodoListContent 
-            todos={filteredTodos} 
-            onToggle={toggleTodo} 
-            onDelete={deleteTodo} 
-            onEdit={editTodo} 
+          <TodoListContent
+            todos={filteredTodos}
+            onToggle={toggleTodo}
+            onDelete={deleteTodo}
             onClearAll={handleClearAll}
           />
         </TabsContent>
@@ -236,14 +242,18 @@ export function TodoList() {
 }
 
 interface TodoListContentProps {
-  todos: TodoItem[];
-  onToggle: (id: string) => void;
+  todos: Todo[];
+  onToggle: (todo: Todo) => void;
   onDelete: (id: string) => void;
-  onEdit: (id: string, newText: string) => void;
   onClearAll: () => void;
 }
 
-function TodoListContent({ todos, onToggle, onDelete, onEdit, onClearAll }: TodoListContentProps) {
+function TodoListContent({
+  todos,
+  onToggle,
+  onDelete,
+  onClearAll,
+}: TodoListContentProps) {
   return (
     <AnimatePresence>
       {todos.length > 0 ? (
@@ -252,20 +262,19 @@ function TodoListContent({ todos, onToggle, onDelete, onEdit, onClearAll }: Todo
           animate={{ opacity: 1 }}
           className="space-y-3"
         >
-          {todos.map(todo => (
-            <Todo
+          {todos.map((todo) => (
+            <TodoItem
               key={todo.id}
               todo={todo}
               onToggle={onToggle}
               onDelete={onDelete}
-              onEdit={onEdit}
             />
           ))}
-          
+
           <div className="flex justify-end mt-6">
-            <Button 
-              variant="destructive" 
-              size="sm" 
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={onClearAll}
               className="text-xs flex items-center"
             >
@@ -280,7 +289,10 @@ function TodoListContent({ todos, onToggle, onDelete, onEdit, onClearAll }: Todo
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <Alert variant="default" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <Alert
+            variant="default"
+            className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+          >
             <AlertDescription className="text-center py-6 text-slate-500 dark:text-slate-400">
               TODOがありません。新しいTODOを追加してください。
             </AlertDescription>
@@ -289,4 +301,4 @@ function TodoListContent({ todos, onToggle, onDelete, onEdit, onClearAll }: Todo
       )}
     </AnimatePresence>
   );
-} 
+}
