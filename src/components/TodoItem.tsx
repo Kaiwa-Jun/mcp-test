@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Database } from "@/types/database.types";
+import React from "react";
 
 type Todo = Database["public"]["Tables"]["todos"]["Row"];
 
@@ -22,7 +23,7 @@ const TestMotion = {
 // 使用するコンポーネントを環境によって切り替え
 const MotionComponent = isTest ? TestMotion : motion;
 
-export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
+function TodoItemComponent({ todo, onToggle, onDelete }: TodoItemProps) {
   return (
     <MotionComponent.li
       initial={{ opacity: 0, y: 20 }}
@@ -54,3 +55,6 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
     </MotionComponent.li>
   );
 }
+
+// React.memoでコンポーネントをラップして、propsが変更されない限り再レンダリングされないようにする
+export const TodoItem = React.memo(TodoItemComponent);
