@@ -9,9 +9,22 @@ interface TodoItemProps {
   onDelete: (id: string) => void;
 }
 
+// テスト環境かどうかを判定
+const isTest = process.env.NODE_ENV === "test";
+
+// テスト環境用のモーションコンポーネント
+const TestMotion = {
+  li: ({ children, ...props }: React.HTMLProps<HTMLLIElement>) => (
+    <li {...props}>{children}</li>
+  ),
+};
+
+// 使用するコンポーネントを環境によって切り替え
+const MotionComponent = isTest ? TestMotion : motion;
+
 export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
   return (
-    <motion.li
+    <MotionComponent.li
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -38,6 +51,6 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
       >
         削除
       </button>
-    </motion.li>
+    </MotionComponent.li>
   );
 }

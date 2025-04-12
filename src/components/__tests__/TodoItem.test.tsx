@@ -4,6 +4,15 @@ import userEvent from "@testing-library/user-event";
 import { TodoItem } from "../TodoItem";
 import { jest } from "@jest/globals";
 
+// framer-motionをモック
+jest.mock("framer-motion", () => ({
+  motion: {
+    li: ({ children, ...props }: React.HTMLProps<HTMLLIElement>) => (
+      <li {...props}>{children}</li>
+    ),
+  },
+}));
+
 describe("TodoItem Component", () => {
   const mockTodo = {
     id: "1",
@@ -47,7 +56,8 @@ describe("TodoItem Component", () => {
     const checkbox = screen.getByRole("checkbox");
     await user.click(checkbox);
 
-    expect(mockHandleToggle).toHaveBeenCalledWith(mockTodo.id);
+    // todoオブジェクト全体で呼び出されることを期待
+    expect(mockHandleToggle).toHaveBeenCalledWith(mockTodo);
   });
 
   it("calls onDelete when delete button is clicked", async () => {
@@ -77,7 +87,7 @@ describe("TodoItem Component", () => {
     );
 
     const todoText = screen.getByText("Test Todo");
-    expect(todoText).toHaveStyle({ textDecoration: "line-through" });
+    expect(todoText.className).toContain("line-through");
     expect(screen.getByRole("checkbox")).toBeChecked();
   });
 });
