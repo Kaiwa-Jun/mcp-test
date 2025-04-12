@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TodoItem } from "./TodoItem";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ export function TodoList() {
     }
   }, [user]);
 
-  async function fetchTodos() {
+  const fetchTodos = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from("todos")
@@ -85,70 +85,121 @@ export function TodoList() {
       toast.success(`${data.length}件のTODOを読み込みました`);
     }
     setIsLoading(false);
-  }
+  }, [user?.id]);
 
-  async function addTodo(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newTodo.trim()) return;
-    if (!user) {
-      toast.error("ログインしてください");
-      return;
-    }
+  const addTodo = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newTodo.trim()) return;
+      if (!user) {
+        toast.error("ログインしてください");
+        return;
+      }
 
-    const { error } = await supabase
-      .from("todos")
-      .insert([{ title: newTodo.trim(), user_id: user.id }]);
+      const newTodoItem: Todo = {
+        id: crypto.randomUUID(),
+        title: newTodo.trim(),
+        user_id: user.id,
+        completed: false,
+        created_at: new Date().toISOString(),
+        updated_at: null,
+        priority: null,
+      };
 
-    if (error) {
-      console.error("Error adding todo:", error);
-      toast.error("TODOの追加に失敗しました");
-      return;
-    }
+      // 楽観的UIアップデート
+      setTodos((prev) => [newTodoItem, ...prev]);
+      setNewTodo("");
 
-    setNewTodo("");
-    fetchTodos();
-  }
+      const { error } = await supabase
+        .from("todos")
+        .insert([{ title: newTodo.trim(), user_id: user.id }]);
 
-  async function toggleTodo(todo: Todo) {
-    const { error } = await supabase
-      .from("todos")
-      .update({ completed: !todo.completed })
-      .eq("id", todo.id)
-      .eq("user_id", user?.id);
+      if (error) {
+        console.error("Error adding todo:", error);
+        toast.error("TODOの追加に失敗しました");
+        // エラー時は元の状態に戻す
+        setTodos((prev) => prev.filter((todo) => todo.id !== newTodoItem.id));
+        return;
+      }
 
-    if (error) {
-      console.error("Error toggling todo:", error);
-      toast.error("TODOの状態変更に失敗しました");
-      return;
-    }
+      // 追加成功後も再フェッチは必要なし（IDはサーバー側で生成されるため必要な場合はここでコメントアウトを外す）
+      // fetchTodos();
+    },
+    [newTodo, user]
+  );
 
-    fetchTodos();
-  }
+  const toggleTodo = useCallback(
+    async (todo: Todo) => {
+      // 楽観的UIアップデート
+      setTodos((prev) =>
+        prev.map((t) =>
+          t.id === todo.id ? { ...t, completed: !t.completed } : t
+        )
+      );
 
-  async function deleteTodo(id: string) {
-    const { error } = await supabase
-      .from("todos")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user?.id);
+      const { error } = await supabase
+        .from("todos")
+        .update({ completed: !todo.completed })
+        .eq("id", todo.id)
+        .eq("user_id", user?.id);
 
-    if (error) {
-      console.error("Error deleting todo:", error);
-      toast.error("TODOの削除に失敗しました");
-      return;
-    }
+      if (error) {
+        console.error("Error toggling todo:", error);
+        toast.error("TODOの状態変更に失敗しました");
+        // エラー時は元の状態に戻す
+        setTodos((prev) =>
+          prev.map((t) =>
+            t.id === todo.id ? { ...t, completed: todo.completed } : t
+          )
+        );
+        return;
+      }
+    },
+    [user?.id]
+  );
 
-    fetchTodos();
-  }
+  const deleteTodo = useCallback(
+    async (id: string) => {
+      // 削除前のtodosを記憶
+      const previousTodos = [...todos];
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      addTodo(e);
-    }
-  };
+      // 楽観的UIアップデート
+      setTodos((prev) => prev.filter((todo) => todo.id !== id));
 
-  const handleClearAll = async () => {
+      const { error } = await supabase
+        .from("todos")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user?.id);
+
+      if (error) {
+        console.error("Error deleting todo:", error);
+        toast.error("TODOの削除に失敗しました");
+        // エラー時は元の状態に戻す
+        setTodos(previousTodos);
+        return;
+      }
+    },
+    [todos, user?.id]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        addTodo(e);
+      }
+    },
+    [addTodo]
+  );
+
+  const handleClearAll = useCallback(async () => {
     if (window.confirm("すべてのTODOを削除しますか？")) {
+      // 削除前のtodosを記憶
+      const previousTodos = [...todos];
+
+      // 楽観的UIアップデート
+      setTodos([]);
+
       try {
         const { error } = await supabase
           .from("todos")
@@ -156,7 +207,7 @@ export function TodoList() {
           .eq("user_id", user?.id)
           .in(
             "id",
-            todos.map((todo) => todo.id)
+            previousTodos.map((todo) => todo.id)
           );
 
         if (error) {
@@ -164,26 +215,31 @@ export function TodoList() {
         }
 
         toast.success("すべてのTODOを削除しました");
-        fetchTodos();
       } catch (error) {
         console.error("TODOの削除に失敗しました:", error);
         toast.error("TODOの削除に失敗しました");
+        // エラー時は元の状態に戻す
+        setTodos(previousTodos);
       }
     }
-  };
+  }, [todos, user?.id]);
 
   // タブ変更時のハンドラ
-  const handleTabChange = (value: string) => {
+  const handleTabChange = useCallback((value: string) => {
     setActiveTab(value as "all" | "active" | "completed");
-  };
+  }, []);
 
   // 現在のタブに基づいてフィルタリングされたTODO
-  const filteredTodos = todos.filter((todo) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "active") return !todo.completed;
-    if (activeTab === "completed") return todo.completed;
-    return true;
-  });
+  const filteredTodos = useMemo(
+    () =>
+      todos.filter((todo) => {
+        if (activeTab === "all") return true;
+        if (activeTab === "active") return !todo.completed;
+        if (activeTab === "completed") return todo.completed;
+        return true;
+      }),
+    [todos, activeTab]
+  );
 
   if (isLoading) {
     return (
@@ -229,25 +285,8 @@ export function TodoList() {
           <TabsTrigger value="completed">完了済み</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="mt-0">
-          <TodoListContent
-            todos={filteredTodos}
-            onToggle={toggleTodo}
-            onDelete={deleteTodo}
-            onClearAll={handleClearAll}
-          />
-        </TabsContent>
-
-        <TabsContent value="active" className="mt-0">
-          <TodoListContent
-            todos={filteredTodos}
-            onToggle={toggleTodo}
-            onDelete={deleteTodo}
-            onClearAll={handleClearAll}
-          />
-        </TabsContent>
-
-        <TabsContent value="completed" className="mt-0">
+        {/* 共通のコンテンツを1つのTabContentで共有 */}
+        <TabsContent value={activeTab} className="mt-0">
           <TodoListContent
             todos={filteredTodos}
             onToggle={toggleTodo}
@@ -267,7 +306,7 @@ interface TodoListContentProps {
   onClearAll: () => void;
 }
 
-function TodoListContent({
+const TodoListContent = React.memo(function TodoListContent({
   todos,
   onToggle,
   onDelete,
@@ -320,4 +359,4 @@ function TodoListContent({
       )}
     </AnimatePresence>
   );
-}
+});
