@@ -17,6 +17,7 @@ export interface Database {
           created_at: string | null;
           updated_at: string | null;
           user_id: string;
+          priority: number | null;
         };
         Insert: {
           id?: string;
@@ -25,6 +26,7 @@ export interface Database {
           created_at?: string | null;
           updated_at?: string | null;
           user_id: string;
+          priority?: number | null;
         };
         Update: {
           id?: string;
@@ -33,6 +35,7 @@ export interface Database {
           created_at?: string | null;
           updated_at?: string | null;
           user_id?: string;
+          priority?: number | null;
         };
       };
     };
