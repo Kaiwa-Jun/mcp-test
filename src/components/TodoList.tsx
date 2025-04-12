@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Database } from "@/types/database.types";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Alertコンポーネントのインラインスタイル
 type AlertProps = {
@@ -49,6 +50,7 @@ const AlertDescription: React.FC<AlertDescriptionProps> = ({
 type Todo = Database["public"]["Tables"]["todos"]["Row"];
 
 export function TodoList() {
+  const { user } = useAuth();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -57,17 +59,24 @@ export function TodoList() {
   );
 
   useEffect(() => {
-    fetchTodos();
-  }, []);
+    if (user) {
+      fetchTodos();
+    }
+  }, [user]);
 
   async function fetchTodos() {
+    setIsLoading(true);
     const { data, error } = await supabase
       .from("todos")
       .select("*")
+      .eq("user_id", user?.id)
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching todos:", error);
+      // エラーログのみ出力し、ユーザーにはトーストを表示しない
+      setTodos([]);
+      setIsLoading(false);
       return;
     }
 
@@ -81,10 +90,14 @@ export function TodoList() {
   async function addTodo(e: React.FormEvent) {
     e.preventDefault();
     if (!newTodo.trim()) return;
+    if (!user) {
+      toast.error("ログインしてください");
+      return;
+    }
 
     const { error } = await supabase
       .from("todos")
-      .insert([{ title: newTodo.trim() }]);
+      .insert([{ title: newTodo.trim(), user_id: user.id }]);
 
     if (error) {
       console.error("Error adding todo:", error);
@@ -100,7 +113,8 @@ export function TodoList() {
     const { error } = await supabase
       .from("todos")
       .update({ completed: !todo.completed })
-      .eq("id", todo.id);
+      .eq("id", todo.id)
+      .eq("user_id", user?.id);
 
     if (error) {
       console.error("Error toggling todo:", error);
@@ -112,7 +126,11 @@ export function TodoList() {
   }
 
   async function deleteTodo(id: string) {
-    const { error } = await supabase.from("todos").delete().eq("id", id);
+    const { error } = await supabase
+      .from("todos")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", user?.id);
 
     if (error) {
       console.error("Error deleting todo:", error);
@@ -135,6 +153,7 @@ export function TodoList() {
         const { error } = await supabase
           .from("todos")
           .delete()
+          .eq("user_id", user?.id)
           .in(
             "id",
             todos.map((todo) => todo.id)
